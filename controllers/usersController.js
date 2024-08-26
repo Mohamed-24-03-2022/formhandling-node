@@ -1,6 +1,6 @@
 const usersStorage = require('../storages/usersStorage');
 
-const { body, validationResult } = require('express-validator');
+const { body, query, validationResult } = require('express-validator');
 
 const alphaErr = 'must only contain letters.';
 const lengthErr = 'must be between 1 and 10 characters.';
@@ -21,10 +21,9 @@ const validateUser = [
     .isLength({ min: 1, max: 10 })
     .withMessage(`Last name ${lengthErr}`),
 
-  body('email')
-    .isEmail()
-    .withMessage('Please enter a valid email'),
+  body('email').isEmail().withMessage('Please enter a valid email'),
 
+  query('searchName').trim().notEmpty().isAlpha(),
 ];
 
 const usersListGet = (req, res, next) => {
@@ -83,22 +82,41 @@ const usersUpdatePost = [
   },
 ];
 
-
 const usersDeletePost = (req, res) => {
   usersStorage.deleteUser(req.params.id);
 
-  res.redirect("/");
-}
+  res.redirect('/');
+};
 
-const searchUserByName = (req, res) => {
-  const searchedName = req.query.searchName.toLowerCase();
+const searchUserByName = [
+  validateUser[3],
+  (req, res) => {
+    const errors = validationResult(req);
 
-  const allUsers = usersStorage.getUsers();
+    if (!errors.isEmpty()) {
+      return res.status(400).render('search', {
+        title: 'No result Found', result: []
+      });
+    }
 
-  const searchRes = allUsers.filter(user => user.firstName.toLowerCase().includes(searchedName));
+    const searchedName = req.query.searchName.toLowerCase();
 
+    const allUsers = usersStorage.getUsers();
 
-  res.render('search', { title: 'Search Result', result: searchRes });
-}
+    const searchRes = allUsers.filter((user) =>
+      user.firstName.toLowerCase().includes(searchedName)
+    );
 
-module.exports = { usersListGet, usersCreateGet, usersCreatePost, usersUpdateGet, usersUpdatePost, usersDeletePost, searchUserByName };
+    res.render('search', { title: 'Search Result', result: searchRes });
+  },
+];
+
+module.exports = {
+  usersListGet,
+  usersCreateGet,
+  usersCreatePost,
+  usersUpdateGet,
+  usersUpdatePost,
+  usersDeletePost,
+  searchUserByName,
+};
